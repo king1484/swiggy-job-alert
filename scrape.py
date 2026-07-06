@@ -1,7 +1,7 @@
-import json
 import os
 import urllib.parse
 import urllib.request
+import urllib.error
 from playwright.sync_api import sync_playwright
 
 URL = "https://careers.swiggy.com/#/careers?career_page_category=Technology"
@@ -12,7 +12,6 @@ def scrape():
         page = browser.new_page()
         page.goto(URL, wait_until="networkidle", timeout=60000)
 
-        # Wait for the embedded careers iframe and then its job table
         page.wait_for_selector("iframe", timeout=30000)
         frame = page.frame_locator("iframe").first
         frame.locator("table tbody tr").first.wait_for(timeout=30000)
@@ -52,8 +51,13 @@ def send_telegram(text):
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/sendMessage",
         data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    urllib.request.urlopen(req, timeout=20).read()
+    try:
+        urllib.request.urlopen(req, timeout=20).read()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Telegram send failed: {e.code} {e.reason}; body={body}")
 
 if __name__ == "__main__":
     jobs = scrape()
