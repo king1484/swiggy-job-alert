@@ -18,13 +18,19 @@ def scrape():
         jobs = []
         for r in rows:
             cells = r.locator("td").all_inner_texts()
-            if len(cells) >= 4:
-                jobs.append({
-                    "id": cells[0].strip(),
-                    "title": cells[1].strip(),
-                    "location": cells[2].strip(),
-                    "unit": cells[3].strip(),
-                })
+            if len(cells) < 4:
+                continue
+            title = cells[1].strip()
+            location = cells[2].strip()
+            unit = cells[3].strip()
+            if not title or location in {"Location", ""} or unit in {"Unit", ""}:
+                continue
+            jobs.append({
+                "id": cells[0].strip(),
+                "title": title,
+                "location": location,
+                "unit": unit,
+            })
         browser.close()
         return jobs
 
@@ -33,10 +39,17 @@ def format_msg(jobs):
     today = datetime.date.today().isoformat()
     if not jobs:
         return f"Swiggy Technology jobs — {today}\nNo tech roles found."
-    lines = [f"Swiggy Technology jobs — {today} ({len(jobs)} roles)"]
-    for j in jobs:
-        lines.append(f"- {j['title']} | {j['location']} | {j['unit']}")
-    return "\n".join(lines)
+    lines = [
+        f"Swiggy Technology jobs — {today}",
+        f"Found {len(jobs)} open role{'s' if len(jobs) != 1 else ''}:",
+        "",
+    ]
+    for idx, j in enumerate(jobs, 1):
+        lines.append(f"{idx}. {j['title']}")
+        lines.append(f"   Location: {j['location']}")
+        lines.append(f"   Unit: {j['unit']}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
 
 def send_telegram(text):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
