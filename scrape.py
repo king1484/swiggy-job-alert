@@ -1,8 +1,6 @@
 import os
-import urllib.parse
-import urllib.request
-import urllib.error
 from playwright.sync_api import sync_playwright
+import requests
 
 URL = "https://careers.swiggy.com/#/careers?career_page_category=Technology"
 
@@ -43,21 +41,13 @@ def format_msg(jobs):
 def send_telegram(text):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    payload = urllib.parse.urlencode({
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    resp = requests.post(url, json={
         "chat_id": chat_id,
         "text": text,
         "disable_web_page_preview": True,
-    }).encode()
-    req = urllib.request.Request(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        data=payload,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    try:
-        urllib.request.urlopen(req, timeout=20).read()
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Telegram send failed: {e.code} {e.reason}; body={body}")
+    }, timeout=20)
+    resp.raise_for_status()
 
 if __name__ == "__main__":
     jobs = scrape()
